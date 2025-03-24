@@ -84,7 +84,7 @@ module RedmineSlackIntegration
       end
 
       ## Post message data
-      thread_ts = post_maessage(nil, slack_info['token'], data)
+      thread_ts = post_message(nil, slack_info['token'], data)
       set_slack_thread_ts(issue, thread_ts)
     end
 
@@ -183,11 +183,9 @@ module RedmineSlackIntegration
           # Find the user by login
           user = User.find_by_login(login)
           next if user.nil?
-          next if user.id == issue.assigned_to_id # Skip if already mentioned as assignee
-          next if issue.watcher_user_ids.include?(user.id) # Skip if already mentioned as watcher
 
           sui_mentioned = get_slack_user_id(user.id, slack_info['token'])
-          data['text'] = data['text'].gsub("@#{user.login}", "<@#{sui_mentioned}>") unless sui_mentioned.blank?
+          data['text'] = data['text'].gsub("@#{login}", "<@#{sui_mentioned}>") unless sui_mentioned.blank?
         end
       end
 
@@ -195,7 +193,7 @@ module RedmineSlackIntegration
       return if details.blank? && journal.notes.blank?
 
       ## Post message data
-      thread_ts = post_maessage(data['thread_ts'], slack_info['token'], data)
+      thread_ts = post_message(data['thread_ts'], slack_info['token'], data)
       if data['thread_ts'].blank? && !(thread_ts.blank?)
         set_slack_thread_ts(issue, thread_ts)
       end
@@ -472,7 +470,7 @@ private
 ################################################################################
 ## Post message to Slack, and return slack thread_ts
 ################################################################################
-    def post_maessage(thread_ts, token, data)
+    def post_message(thread_ts, token, data)
       Rails.logger.debug("Chat Data: #{data.to_json}")
 
       ## Create URI
