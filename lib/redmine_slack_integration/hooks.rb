@@ -154,8 +154,8 @@ module RedmineSlackIntegration
       end
 
       ## Add issue notes
-      unless issue.notes.blank?
-        notes = issue.notes.truncate(CHARLIMIT, omission: "\n...")
+      unless journal.notes.blank?
+        notes = journal.notes.truncate(CHARLIMIT, omission: "\n...")
         data['text'] = data['text'] + "\n#{''.ljust(37, '-')}\n[#{l(:field_notes)}]\n#{notes}"
       end
 
@@ -176,8 +176,23 @@ module RedmineSlackIntegration
         data['text'] = data['text'] + " <@#{sui_watcher}>" unless sui_watcher.blank?
       end
 
+      ## Add mentions from notes
+      unless journal.notes.blank?
+        mentioned_users = extract_mentions_from_notes(journal.notes)
+        mentioned_users.each do |login|
+          # Find the user by login
+          user = User.find_by_login(login)
+          next if user.nil?
+          next if user.id == issue.assigned_to_id # Skip if already mentioned as assignee
+          next if issue.watcher_user_ids.include?(user.id) # Skip if already mentioned as watcher
+
+          sui_mentioned = get_slack_user_id(user.id, slack_info['token'])
+          data['text'] = data['text'].gsub("@#{user.login}", "<@#{sui_mentioned}>") unless sui_mentioned.blank?
+        end
+      end
+
       ## Don't send empty data
-      return if details.blank? && issue.notes.blank?
+      return if details.blank? && journal.notes.blank?
 
       ## Post message data
       thread_ts = post_maessage(data['thread_ts'], slack_info['token'], data)
@@ -204,6 +219,19 @@ module RedmineSlackIntegration
 ## Private Method
 ################################################################################
 private
+
+################################################################################
+## Extract mentions from notes
+################################################################################
+    def extract_mentions_from_notes(notes)
+      return [] if notes.blank?
+
+      # Extract login IDs from notes - looking for @login format
+      mentions = notes.scan(/@([a-zA-Z0-9_\-.]+)/).flatten.uniq
+
+      # Could be extended to support other formats if needed
+      return mentions
+    end
 
 ################################################################################
 ## Is Slack post message Disabled
@@ -374,6 +402,20 @@ private
       end
 
       return slack_user_id
+    end
+
+################################################################################
+## Get slack user ID by login
+################################################################################
+    def get_slack_user_id_by_login(login, token)
+      return nil if login.blank?
+
+      ## Find the user by login
+      user = User.find_by_login(login)
+      return nil if user.nil?
+
+      ## Get slack user ID
+      return get_slack_user_id(user.id, token)
     end
 
 ################################################################################
