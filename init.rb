@@ -1,5 +1,5 @@
-require_dependency 'redmine_slack_integration/hooks'
-require_dependency 'redmine_slack_integration/issue_relations_controller_patch'
+require_dependency File.expand_path('../lib/redmine_slack_integration/hooks', __FILE__)
+require_dependency File.expand_path('../lib/redmine_slack_integration/issue_relations_controller_patch', __FILE__)
 
 ################################################################################
 ## Register Plugin
